@@ -1,0 +1,439 @@
+The Problem
+
+Your task is to write a thread-safe ResourcePool in Java; it should have a constructor, taking an int that should be interpreted as the size of the pool. Other than the constructor, it only needs two public instance methods: claimResource() and releaseResource(). You can assume, for the purposes of this problem, that clients will always release Resources that they claim, and they will do so once, and only once.
+
+Also, you can assume that the class Resource has a default, no-argument constructor (this is, admittedly, artificial, but it keeps things simple, and it keeps us focused on the ResourcePool). The class Resource is provided so that your code will compile. You cannot edit Resource, though; for the purposes of this problem, Resource looks like this:
+
+public final class Resource
+{
+}
+Below is a skeleton of the class that you should fill in. We'll compile the class and test it.
+
+public class ResourcePool
+{
+  /**
+   * Construct a ResourcePool containing the specified
+   * number of Resources.
+   *
+   * @param size the number of Resources to be contained by the pool.
+   */
+  public ResourcePool(int size)
+  {
+  }
+
+  /**
+   * Claim a {@link Resource} from the pool.  A Resource returned from this
+   * method will not be given to another caller until after it has
+   * been released via a call to {@link #releaseResource(Resource)}.
+   *
+   * @return a {@link Resource} from the pool, for use only by the caller
+   */
+  public Resource claimResource()
+  {
+    // TODO: Implement me
+    return null;
+  }
+
+  /**
+   * Release a {@link Resource} back into the pool; after this method has
+   * been called, the Resource is available to future callers of
+   * {@link #claimResource}.
+   *
+   * @param r the {@link Resource} to be released.
+   */
+  public void releaseResource(Resource r)
+  {
+    // TODO: Implement me
+  }
+}
+For The Interviewer
+
+Tell the candidate the following:
+
+You are working in a high-volume multi-threaded application, like a web application, and your threads need to work with a class, let's call it Resource, whose instances are rather expensive to construct, and not thread-safe; i.e., a given instance of Resource should only be used by one thread at a time. Once a given thread is done with the Resource, it could be used by another thread. Lots of threads need to use Resources for short periods of time, but once they're done with the Resource, they may not need one again for a while, if at all.
+
+Encourage the candidate to think out loud about data structure choices.
+Encourage candidate to ask questions about anything that is unclear
+There is one aspect of the problem deliberately left unspecified, so that the candidate needs to ask questions to drive out the specifics:
+
+Candidate asks: What happens when someone calls claimResource() and they're all claimed?
+Interviewer responds: "What do you think should happen when the pool is empty? What are your options?"
+(For example: grow the pool, make the client wait until one is available, throw an exception, just return null.)
+
+After discussing the options, tell the candidate that they should just return null if the pool is empty.
+
+If there is time after the problem is solved, you can move on to a version that uses wait() and notify().
+
+Hints
+
+Many candidates start out thinking they need to keep track of Resources that are already claimed; most experienced candidates realize pretty quickly that the requirements of the problem are such that you only need to keep track of Resources that are currently available to be claimed.
+
+If the candidate chooses to use a Hashtable or similar key-value data structure, and does not switch directions relatively soon, you might ask, “I see you've chosen to use a Hashtable. What will you use as the key for each entry? Why?”
+
+The wait() method throws InterruptedException, which can typically be caught and ignored.
+
+Followup Questions
+
+Ask the candidate why they chose the data structure(s) they did. Ask them what others they might have chosen, and what advantages there might be to one or the other.
+You might wish to discuss thread synchronization. Make the candidate walk you through how a race condition could occur, and have them point to the specific location in the code where having control pass to another thread would cause trouble. Ask the candidate whether everything they've synchronized needs to be synchronized, or whether the solution would still work with one of the synchronized keywords removed. (Depending on the solution, releaseResource() might or might not need explicit synchronization.)
+You might wish to discuss the fact that the wait()/notify() solution is susceptible to starvation.
+You might wish to discuss how a real ResourcePool would differ from this one; how it would use an initial size, a maximum size, and a policy for how large to grow the pool at once, etc.
+You might wish to discuss what a client would have to do in order to make certain that claimed Resources are invariably released. (For example, using a finally block could help with this.)
+You might wish to discuss the special considerations that apply to database connection pools. See if the candidate has an understanding that: (a) database connections can go stale and may need to be re-established, (b) database connections are often limited in number by policy; the database may not let you create arbitrarily many connections.
+If there's time, you can even discuss with the candidate how they would write a JUnit test to test their class.
+Solution
+
+Solution #1
+
+Here is one example of a solution where an empty pool returns null.
+
+import java.util.List;
+import java.util.LinkedList;
+
+public class ResourcePool
+{
+  private List pool = new LinkedList();
+
+  public ResourcePool(int size)
+  {
+    for (int i = 0; i < size; i++)
+    {
+      pool.add(new Resource());
+    }
+  }
+
+  public synchronized Resource claimResource()
+  {
+    if (pool.isEmpty())
+    {
+      return null;
+    }
+    return (Resource) pool.remove(0);
+  }
+
+  public synchronized void releaseResource(Resource r)
+  {
+    pool.add(r);
+  }
+}
+Solution #2
+
+Here is a solution that uses wait() and notify().
+
+import java.util.List;
+import java.util.LinkedList;
+
+public class ResourcePool
+{
+  private List pool = new LinkedList();
+
+  public ResourcePool(int size)
+  {
+    for (int i = 0; i < size; i++)
+    {
+      pool.add(new Resource());
+    }
+  }
+
+  public synchronized Resource claimResource()
+  {
+    while (true)
+    {
+      if (!pool.isEmpty())
+      {
+        return (Resource) pool.remove(0);
+      }
+      try
+      {
+        wait();
+      }
+      catch (InterruptedException e)
+      {
+        // ignore
+      }
+    }
+  }
+
+  public synchronized void releaseResource(Resource r)
+  {
+    pool.add(r);
+    notify();
+  }
+}
+Unit Test
+
+Here is a JUnit test test their solution. Note that the constant EMPTY_POOL_RETURNS_NULL can be set to true for the initial solution, and then flipped to false to test the wait()/notify() solution.
+
+import java.util.*;
+
+import org.junit.*;
+import static org.junit.Assert.*;
+
+public class ResourcePoolTest
+{
+  private static final boolean VERBOSE = false;
+  private static final boolean EMPTY_POOL_RETURNS_NULL = true;
+  private static final int POOL_SIZE = 10;
+  private static final int NUM_THREADS = 20;
+  private static final int NUM_ITERATIONS_PER_THREAD = 400;
+  private static final long MAX_SLEEP_MS = 50L;
+  private static final long THREAD_GROUP_WAIT_TIMEOUT =
+  NUM_THREADS * NUM_ITERATIONS_PER_THREAD * MAX_SLEEP_MS;
+
+  private static Random sRandom = new Random(System.currentTimeMillis());
+
+  private Set mClaimedResources = null;
+  private ResourcePool mPool = null;
+  private int mMaxClaimedResources = 0;
+
+  @Before
+  public void setUp() throws Exception
+  {
+    try
+    {
+      mPool = new ResourcePool(POOL_SIZE);
+      System.out.println("Created resource pool of class:" + mPool.getClass().getName());
+      mClaimedResources = Collections.synchronizedSet(new HashSet());
+    }
+    catch (Throwable e)
+    {
+      System.err.println("Exception caught within setUp(): ");
+      e.printStackTrace();
+      throw new Exception(e);
+    }
+  }
+
+  @Test
+  public void testClaimResourceSingleThreaded() throws Throwable
+  {
+    try
+    {
+      // Drain and fill the pool twice
+      // (second time ensures that items returned to the pool become available again)
+      for (int i = 0; i < 2; i++)
+      {
+        for (int j = 0; j < POOL_SIZE; j++)
+        {
+          Resource resource = mPool.claimResource();
+          if (VERBOSE)
+          {
+            System.out.println("Claimed resource " + resource);
+          }
+          assertNotNull("Expected non-null Resource from ResourcePool", resource);
+          assertFalse("Resource " + resource + " already claimed.", hasClaimedResource(resource));
+          storeClaimedResource(resource);
+        }
+
+        if (EMPTY_POOL_RETURNS_NULL)
+        {
+          assertNull("Expected empty pool to return null.", mPool.claimResource());
+        }
+
+        for (Iterator iterator = mClaimedResources.iterator(); iterator.hasNext();)
+        {
+          Resource resource = (Resource) iterator.next();
+          mPool.releaseResource(resource);
+        }
+
+        forgetAllClaimedResources();
+      }
+
+    }
+    catch (Throwable e)
+    {
+      System.err.println("Throwable caught within test");
+      e.printStackTrace();
+      throw e;
+    }
+  }
+
+  private boolean hasClaimedResource(Resource resource)
+  {
+    return mClaimedResources.contains(resource);
+  }
+
+  private void forgetClaimedResource(Resource resource)
+  {
+    mClaimedResources.remove(resource);
+  }
+
+  private void forgetAllClaimedResources()
+  {
+    mClaimedResources.clear();
+  }
+
+  private void storeClaimedResource(Resource resource)
+  {
+    mClaimedResources.add(resource);
+    mMaxClaimedResources = Math.max(mMaxClaimedResources, mClaimedResources.size());
+    assertTrue("Expected maximum number of claimed resources at once to be less than or equal to pool size",
+    mMaxClaimedResources <= POOL_SIZE);
+  }
+
+  @Test
+  public void testClaimResourcesMultiThreaded() throws Throwable
+  {
+    try
+    {
+      List threads = new ArrayList();
+      ThreadGroup group = new ThreadGroup("ResourcePoolTestThreadGroup");
+      for (int i = 0; i < NUM_THREADS; i++)
+      {
+        ResourceConsumerThread thread = new ResourceConsumerThread(group, "TestThread-" + i);
+        thread.start();
+        threads.add(thread);
+      }
+      waitForThreadGroup(group, THREAD_GROUP_WAIT_TIMEOUT);
+      for (Iterator iterator = threads.iterator(); iterator.hasNext();)
+      {
+        ResourceConsumerThread thread = (ResourceConsumerThread) iterator.next();
+        assertTrue("Expected Thread " + thread.getName() + " to complete (probably a bug in the test).",
+        thread.isDone());
+        Throwable t = thread.getThrowable();
+        if (t != null)
+        {
+          throw t;
+        }
+      }
+    }
+    catch (Throwable e)
+    {
+      System.err.println("Throwable caught within test");
+      e.printStackTrace();
+      throw e;
+    }
+  }
+
+
+  private void waitForThreadGroup(ThreadGroup group, long maxWait)
+  {
+    System.out.println("Max wait time for all threads to finish: " + THREAD_GROUP_WAIT_TIMEOUT/1000 + " seconds.");
+
+    long start = System.currentTimeMillis();
+    boolean allDone = false;
+    WAITING:
+    while ((System.currentTimeMillis() - start) < maxWait)
+    {
+      if (group.activeCount() == 0)
+      {
+        allDone = true;
+        break WAITING;
+      }
+    }
+    if (!allDone)
+    {
+      throw new RuntimeException("Not all threads completed in time");
+    }
+  }
+
+  @After
+  public void tearDown() throws Exception
+  {
+    try
+    {
+      System.out.println("Maximum number of resources claimed at any one time was: " + mMaxClaimedResources);
+      mMaxClaimedResources = 0;
+      forgetAllClaimedResources();
+    }
+    catch (Throwable e)
+    {
+      System.err.println("Exception caught within tearDown(): ");
+      e.printStackTrace();
+      throw new Exception(e);
+    }
+  }
+
+  class ResourceConsumerThread
+  extends Thread
+  {
+    private Throwable mThrowable = null;
+
+    private boolean mDone = false;
+
+    public ResourceConsumerThread(ThreadGroup group, String name)
+    {
+      super(group, name);
+    }
+
+    public Throwable getThrowable()
+    {
+      return mThrowable;
+    }
+
+    public boolean isDone()
+    {
+      return mDone;
+    }
+
+    public void run()
+    {
+      Resource resource = null;
+      try
+      {
+        for (int i = 0; i < NUM_ITERATIONS_PER_THREAD; i++)
+        {
+          // Claim a resource
+          resource = mPool.claimResource();
+
+          if (!EMPTY_POOL_RETURNS_NULL)
+          {
+            assertNotNull("Expected non-null Resource from claimResource()", resource);
+          }
+
+          if (resource != null)
+          {
+            synchronized(mClaimedResources)
+            {
+              assertFalse("Resource " + resource + " already claimed.", hasClaimedResource(resource));
+              storeClaimedResource(resource);
+            }
+          }
+
+          // Hold the resource
+          long sleepTime = Math.abs(sRandom.nextLong()) % MAX_SLEEP_MS;
+          if (VERBOSE)
+          {
+            System.out.println("Thread " + getName() + " sleeping for " + sleepTime + "ms.");
+          }
+          sleep(sleepTime);
+
+          // Release the resource
+          if (resource != null)
+          {
+            forgetClaimedResource(resource);
+            mPool.releaseResource(resource);
+            resource = null;
+          }
+        }
+      }
+      catch (Throwable e)
+      {
+        mThrowable = e;
+      }
+      finally
+      {
+        synchronized(mClaimedResources)
+        {
+          if (resource != null)
+          {
+            mPool.releaseResource(resource);
+            forgetClaimedResource(resource);
+            resource = null;
+          }
+        }
+        mDone = true;
+        if (VERBOSE)
+        {
+          System.out.println("Thread " + getName() + " completed.");
+        }
+      }
+    }
+  }
+}
+Evaluation
+
+On the surface, this is a very simple coding problem. But it can reveal a great deal more than strictly coding skills.
+Note how quickly the candidate realizes that the problem is underspecified (i.e., it doesn't state what to do if the pool is empty).
+Note how readily the candidate comes up with alternate solutions for handling an empty pool.
+The choice of data structures is important; a good candidate will instinctively steer clear of a solution that requires them to iterate through the pool in order to find a suitable Resource to return.
+Pay attention to the candidate's attitude when they hear that you're actually going to compile and test their code. Some candidates are put off by having to write real code in an interview; better candidates look forward to the challenge, and enjoy coding anyway.
