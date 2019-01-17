@@ -1,0 +1,184 @@
+Suitable for: Mid-Senior Level Backend Engineer
+Time: 45 minutes
+Format: In-Person
+Skills: Data Structures and Problem Solving
+The Problem
+
+You have a infinite stream of data flowing through your system. Each data-point/event is defined as a message.
+
+class Message {
+    String key;
+    int value;
+}
+You cannot possibly store and process all the data in the stream. So, you define a window on the stream which holds K milliseconds worth of messages. Implement this window interface with the following operations:
+
+interface Window {
+    
+    // Add a message to the window.
+    void addMessage(Message msg); 
+
+    // Get message with given key. Return `null` if the key doesn't exist in the window.
+    Message getMsg(String key);
+    // Get the average of all values in the window.
+    double getAverage(); 
+}
+Constraints:
+
+addMsg should be fast.
+getMsg and getAverage cannot be prohibitively slow.
+For the Interviewer
+
+The size of the window is given at instantiation of the class (K milliseconds) and does not change.
+The constraints are purposely vague (fast, slow). Candidates should be able to ask clarifying questions and come up with equivalent values in terms of time complexity.
+Fast -> O(1)
+Not Slow -> Better than O(N), where N = number of messages. O(log N) or O(K) is acceptable.
+If the candidate proposes a naive hash-map solution, add that removal of old values from the system should also be fast.
+Re-iterate that the system :
+Cannot store all the incoming messages
+Has enough capacity to store messages for a window and a bit more.
+Hints
+
+Bucket the keys rather than storing them individually.
+The most common way to do this is by using a Hash table with a timestamp as key.
+A circular buffer approach will eliminate the need to do removal. However, some logic is needed to read the correct slots (check if timestamp is beyond the window) when reading.
+Each entry in the structure above contains another hash table with mapping keys -> messages for that timestamp. We also store the average individually for each timestamp.
+Followup Questions
+
+If the candidate uses a map of maps approach, ask him whether the cleanup should be done by
+A background thread
+In one of the client requests.
+Ask about thread-safety of the solution
+Solution
+
+Solution 1 : Use a Map keyed by time
+
+public class RollingWindow implements Window {
+    static class MapElement {
+        private long timestamp;
+        private Map<String, Message> events = new HashMap<>();
+        private long sum;
+    }
+    
+    private final Map<Long, MapElement> elements;
+    private final int windowSize;
+    
+    public RollingWindow(int kMilliseconds) {
+        windowSize = kMilliseconds;
+    }
+    
+    public void addMessage(Message msg) {
+        long currentTime = System.currentTimeMillis();
+        elements.putIfAbsent(currentTime, new MapElement());
+        elements.get(currentTime).events.put(msg.getKey(), msg);
+        elements.get(currentTime).incrementSum(msg.getValue());
+    }
+
+    public Message getMessage(String key) {
+        long currentTime = System.currentTimeMillis();
+        return elements.entrySet()
+                .stream()
+                .filter(entry -> (currentTime - entry.getKey()) <= windowSize)
+                .map(entry -> entry.getValue().events)
+                .map(events -> events.get(key))
+                .filter(Objects::nonNull)
+                .findAny()
+                .orElse(null);
+
+    }
+
+    public double getAverage() {
+        long total = 0;
+        long numElements = 0;
+        long currentTime = System.currentTimeMillis();
+
+        for (Map.Entry<Long, MapElement> entry : elements.entrySet()) {
+            if (currentTime - entry.getKey() <= windowSize) {
+                final MapElement mapElement = entry.getValue();
+                total += mapElement.sum;
+                numElements += mapElement.events.size();
+            }
+        }
+
+        if (numElements == 0) return 0;
+
+        return ((double) total) / ((double) numElements);
+    }    
+}
+Solution 2 : Use a Circular Buffer
+
+public class RollingWindow implements Window {
+    static class ArrayElement {
+        private long timestamp = 0;
+        private Map<String, Message> events = new HashMap<>();
+        private long sum = 0;
+
+        public ArrayElement(long currentTime) {
+            this.timestamp = currentTime;
+        }
+
+        public void incrementSum(int value) {
+            sum += value;
+        }
+    }
+
+    private final ArrayElement[] elements;
+
+    public RollingWindow(int kMilliseconds) {
+        elements = new ArrayElement[kMilliseconds];
+    }
+
+    private int getArrayIndex(long currentTime) {
+        return (int) (currentTime % elements.length);
+    }
+
+    public void addMessage(Message msg) {
+        long currentTime = System.currentTimeMillis();
+        int index = getArrayIndex(currentTime);
+
+        if (elements[index].timestamp != currentTime) {
+            elements[index] = new ArrayElement(currentTime);
+        }
+        elements[index].events.put(msg.getKey(), msg);
+        elements[index].incrementSum(msg.getValue());
+    }
+
+    public Message getMessage(String key) {
+        long currentTime = System.currentTimeMillis();
+        return Arrays.stream(elements)
+                .filter(element -> (currentTime - element.timestamp) <= elements.length)
+                .map(element -> element.events)
+                .map(events -> events.get(key))
+                .filter(Objects::nonNull)
+                .findAny()
+                .orElse(null);
+
+    }
+
+    public double getAverage() {
+        long total = 0;
+        long numElements = 0;
+        long currentTime = System.currentTimeMillis();
+
+        for (ArrayElement element : elements) {
+            if (currentTime - element.timestamp <= elements.length) {
+                total += element.sum;
+                numElements += element.events.size();
+            }
+        }
+
+        if (numElements == 0) return 0;
+
+        return ((double) total) / ((double) numElements);
+    }
+}
+Unit Test
+
+TODO: When appropriate, create a JUnit test or other way to automatically check the candidate's solution.
+
+Evaluation
+
+The minimum for a candidate is to recognize the issues with using a hash-map to solve the problem and be able to describe a better solution.
+Can come up with a time complexity definition for fast/slow.
+Candidate comes up with an optimal and correct data structure and implements it correctly.
+Candidate describes where/how any cleanup of old messages (if necessary) is performed.
+Candidate spent time clarifying and asking questions and discussing their approach before jumping into the implementation.
