@@ -1,0 +1,138 @@
+The Problem
+
+In a nutshell, the task is to refactor the code for the Rock, Paper, Scissors game.
+
+The Game class runs the game loop.
+
+First, it instantiates 2 players and then for each iteration of the loop.
+Uses the Player class to randomly select one of the 3 possible options (Rock, Paper, Scissors) for each player
+Runs the evaluation set of if-then-else conditions to decide which player wins,
+Increments the number of wins for the winner.
+The loop ends when one of the player reaches 3 wins.
+
+Stress to the candidate that the goals are to have code that is maintainable and extensible.
+
+For the Interviewer
+
+Encourage the candidate to think aloud about what they are seeing is wrong with the code and how to improve it.
+
+Hints
+
+Where is there redundancy?
+Where is the code hard to maintain?
+Followup Questions
+
+Once the candidate comes up with the first pass solution, you can ask:
+
+Can you add a 4th option to the game, e.g. "Chainsaw", which will beat all of the other options when it's randomly selected.
+And once the candidate implements the "Chainsaw" extension, ask them to introduce another option, e.g. "Fire", which will beat the Paper and the Chainsaw but not the "Rock" and "Scissors" (i.e. chainsaw has some electric component and cables which will get destroyed by "Fire").
+Solution
+
+Sample solution.
+
+static class Game {  
+
+    enum Choice {  
+      ROCK, PAPER, SCISSORS, FIRE, CHAINSAW;  
+
+      static Choice getRandom() {  
+        return Choice.values()[(int)(Math.random() * Choice.values().length)];  
+      }  
+    }  
+
+    // "Beats" relationship  
+    private final Map<Choice, Set<Choice>> beats = new HashMap<>();  
+
+    // config  
+    private final int numTotalWins;  
+
+    Game(int numTotalWins) {  
+
+      this.numTotalWins = numTotalWins;  
+
+      // setup game rules  
+      beats.put(Choice.ROCK, new HashSet<>(Arrays.asList(  
+        Choice.SCISSORS, Choice.FIRE)));  
+      beats.put(Choice.PAPER, new HashSet<>(Arrays.asList(  
+        Choice.ROCK)));  
+      beats.put(Choice.SCISSORS, new HashSet<>(Arrays.asList(  
+        Choice.PAPER, Choice.FIRE)));  
+      beats.put(Choice.FIRE, new HashSet<>(Arrays.asList(  
+        Choice.PAPER, Choice.CHAINSAW)));  
+      beats.put(Choice.CHAINSAW, new HashSet<>(Arrays.asList(  
+        Choice.ROCK, Choice.PAPER, Choice.SCISSORS)));  
+    }  
+
+    void play() {  
+      int roundsPlayed = 0;    // Number of rounds played  
+      int numDraws = 0;   
+      int p1Wins = 0;  
+      int p2Wins = 0;  
+
+      while(p1Wins<numTotalWins && p2Wins<numTotalWins) {  
+        System.out.println("***** Round: " +  
+                           roundsPlayed + " *********************\n");  
+        System.out.println("Number of Draws: "+   
+                           numDraws + "\n");  
+
+
+
+
+        Choice p1Choice = Choice.getRandom();  
+        Choice p2Choice = Choice.getRandom();  
+
+        System.out.println("Player 1: " + p1Choice +   
+                           "\t Player 1 Total Wins: " + p1Wins);  
+
+        System.out.println("Player 2: " + p2Choice+   
+                           "\t Player 2 Total Wins: " + p2Wins);  
+
+
+
+
+        if( beats.get(p1Choice).contains(p2Choice) ) {  
+          p1Wins++;              
+        } else if( beats.get(p2Choice).contains(p1Choice) ) {  
+          p2Wins++;  
+        } else {  
+          numDraws++;  
+        }            
+      }            
+      System.out.println("GAME WON");                  
+    }        
+  }  
+
+  public static void main(String args[]) {        
+    Game game = new Game(3);  
+    game.play();        
+  }
+Evaluation
+
+Rate the candidate based on the following scale (from 2-4):
+
+2.0
+
+At the minimum the candidate should realize that the if-then-else condition in the main loop is spaghetti code is difficult to extend/maintain.
+
+Will usually detect there is redundant state in the Player class (just 1 field is needed to keep the number of wins) and will fix it, but will not pay attention to the naming of the setWins method, which should actually be called something like incrementWins, since it's not a "setter".
+Will try to refactor the if-then-else condition using a partial ordering of the set of the options, and then comparing the options taken by player 1 and player 2.
+Then, may realize the partial ordering is actually not good, since the options form a ring in the "is beaten by" relationship. To continue may come up with coding a special case using an "if" statement to "close the ring" but then they'll keep adding hacks
+When asked for the extensions, will keep adding "if" conditions.
+3.0
+
+Candidates can come up with a solution that works but:
+
+In addition to remove redundant state in Player class, may rename the setWins method so its semantics is better self-documented.
+Will use some kind of data-driven lookup structure to model the "is beaten by" relationship. It may not come up with a generic solution during the first pass, but should arrive to one that supports the extended questions, once asked. Once refactored, the code should have replaced all the if-then-else conditions by a check to evaluate the "draw" or a lookup against the "is beaten by" data structure to decide which player wins.
+Regarding the implementation of the "playerChoice" it may still leave it as is, having to maintain the switch statement and the strings for "rock", "paper", "scissors" in different places in the code, instead of in a single place.
+The candidate may not pay attention to other concerns, such as "does the playerChoice method really belongs in the Player class?"
+4.0
+
+Candidates come up with a solution that:
+
+In addition to all 3.0 requirements, will
+
+The extensions will be implemented by populating new cases in the data structure, never by changing logic.
+Centralize the knowledge about the options of the game and their "is beaten by" relationship in a single place. e.g. they may use an enum to model the Choice, and then redefine "playerChoice" method to use the Enum::values() method to pick one randomly instead of a explicit switch statement. The lookup data structure will be populated with values from the enum and the "playerChoice" method will not have to be modified when new choices are added.
+May decide to move the playerChoice method to a different place, since the current implementation doesn't really depend on the Player state. Potential place: static method on the Choice enum, although a static method in the Game class may make sense too, as far as the access to the set of Choices is public (e.g. Enum::values() will, in case a choice is modeled as an enum)
+May totally ditch the Player class, since it's not adding any value for the current functionality (number of wins can be kept in a local variable in the main loop).
