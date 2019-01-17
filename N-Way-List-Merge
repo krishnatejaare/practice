@@ -1,0 +1,204 @@
+The Problem
+
+You are given a task to implement a function that merges several sorted arrays (lists).
+Candidate should be able to come up with an O(N * Log M) solution. Where N is a total number of elements and M is a number of lists given. There are two ways of doing this:
+Using MinHeap (PriorityQueue) and extract one element at a time
+Merge pairs of lists, then merged pairs and so on (more complicated way of doing that code-wise)
+Solutions
+
+These are the real interview answers that we've accepted and invited people on-site.
+
+Using Heap
+
+import java.util.*;
+
+class Solution {
+    /**
+     * Accepts an array of sorted lists and merges them into one sorted list
+     * Example: 0 [1, 3, 5, 6]
+     * 1 [3, 4, 7],
+     * 2 [-1, 2]     =>[-1, 1, 2, 3, 3, 4, 5, 6, 7]
+     */
+
+
+    public static List<Integer> merge(List<List<Integer>> lists) {
+        List<Integer> result = new ArrayList<>();
+        if (lists == null || lists.size() == 0) {
+            return result;
+        }
+
+        Comparator<Node> comparator = new Comparator<Node>() {
+            public int compare(Node a, Node b) {
+                return a.value - b.value;
+            }
+        };
+
+        Queue<Node> pq = new PriorityQueue<Node>(lists.size(), comparator);
+        for (int i = 0; i < lists.size(); i++) {
+            List<Integer> current = lists.get(i);
+            if (current.size() > 0) {
+                pq.offer(new Node(current.get(0), i, 0));
+            }
+        }
+
+        while (!pq.isEmpty()) {
+            Node top = pq.poll();
+            result.add(top.value);
+            if (top.y < lists.get(top.x).size() - 1) {
+                Node newNode = new Node(lists.get(top.x).get(top.y + 1), top.x, top.y + 1);
+                pq.offer(newNode);
+            }
+        }
+
+        return result;
+    }
+
+    public static void main(String[] args) {
+        System.out.print(merge(
+                Arrays.asList(
+                        Arrays.asList(1, 3, 5, 6),
+                        Arrays.asList(3, 4, 7),
+                        Arrays.asList(-1, 2)
+                )));
+    }
+}
+
+class Node {
+    public int value;
+    public int x;
+    public int y;
+
+    public Node(int value, int x, int y) {
+        this.value = value;
+        this.x = x;
+        this.y = y;
+    }
+}
+By-pair Merging
+
+import java.util.*;
+
+class Solution {
+    /**
+     * Accepts an array of sorted lists and merges them into one sorted list
+     * Example: [1, 3, 5, 6],[3, 4, 7],[-1, 2]=>[-1, 1, 2, 3, 3, 4, 5, 6, 7]
+     * [[], [], []] -> []
+     * [] -> []
+     */
+
+    // M - # lists
+    // N - # elements
+    // O(...) = O(N*log(M))
+    public static List<Integer> merge(List<List<Integer>> lists) {
+        //l1, l2, l3, l4, l5, l6, l7, l8
+        // 1) l1 & l2, l3 & l4, l5 & l6, l7 & l8 -> 4 lists l12,l34,l56,l78
+        // 2) l12 & l34, l56 & l78 -> l1234, l5678
+        // 3) l1234 & l5678 -> result
+        // throw new UnsupportedOperationException("Please implement this method");
+
+        // Base condition check
+        if (lists.size() == 0) {
+            return new ArrayList<Integer>();
+        } else if (lists.size() == 1) {
+            return lists.get(0);
+        }
+
+        // Clone the input
+        List<List<Integer>> res = new ArrayList<List<Integer>>();
+        for (List<Integer> l : lists) {
+            res.add(l);
+        }
+
+        int numLists = lists.size();
+        int numProcessed = 0;
+        int start;
+        while (numLists > 1) {
+            start = 0;
+            if (numLists % 2 != 0) {
+                numProcessed++;
+                start = 1;
+            }
+
+            // Process all current lists
+            for (int i = start; i < numLists; i += 2) {
+                res.set(numProcessed, merge(res.get(i), res.get(i + 1)));
+                numProcessed++;
+            }
+
+            numLists = numProcessed;
+            numProcessed = 0;
+        }
+
+        return res.get(0);
+    }
+
+    private static List<Integer> merge(List<Integer> l1, List<Integer> l2) {
+        int i = 0; // for l1
+        int j = 0; // for l2
+        List<Integer> result = new ArrayList<Integer>();
+
+        while (i < l1.size() && j < l2.size()) {
+            if (l1.get(i) < l2.get(j)) {
+                result.add(l1.get(i));
+                i++;
+            } else if (l1.get(i) > l2.get(j)) {
+                result.add(l2.get(j));
+                j++;
+            } else {
+                result.add(l1.get(i));
+                result.add(l2.get(j));
+                i++;
+                j++;
+            }
+        }
+
+        // Figure out where are the remaining elements to process (if any)
+        List<Integer> temp = new ArrayList<Integer>();
+        int t = 0;
+        if (i < l1.size()) {
+            temp = l1;
+            t = i;
+        } else if (j < l2.size()) {
+            temp = l2;
+            t = j;
+        }
+
+        for (int k = t; k < temp.size(); k++) {
+            result.add(temp.get(k));
+        }
+
+        return result;
+    }
+
+    public static void main(String[] args) {
+        // [-1, 1, 2, 3, 3, 4, 5, 6, 7]
+        System.out.println(merge(
+                Arrays.asList(
+                        Arrays.asList(1, 3, 5, 6),
+                        Arrays.asList(3, 4, 7),
+                        Arrays.asList(-1, 2)
+                )));
+
+        // [-1, 1, 1, 2, 3, 3, 4, 5, 6, 7]
+        System.out.println(merge(
+                Arrays.asList(
+                        Arrays.asList(1, 3, 5, 6),
+                        Arrays.asList(3, 4, 7),
+                        Arrays.asList(-1, 2),
+                        Arrays.asList(1)
+                )));
+
+        // [-1, 1]
+        System.out.println(merge(
+                Arrays.asList(
+                        Arrays.asList(-1),
+                        Arrays.asList(1)
+                )));
+
+        // [1, 3, 5, 6]
+        System.out.println(merge(
+                Arrays.asList(
+                        Arrays.asList(1, 3, 5, 6)
+                )));
+    }
+}
