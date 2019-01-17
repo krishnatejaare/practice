@@ -1,0 +1,111 @@
+The Problem
+
+In a nutshell, the problem is to implement basic operators, i.e. >=, +, -, *, / for natural numbers without using int or any other numbers in java.
+
+Given the following definition of a natural number:
+
+/**
+ * An interface that represents a natural number (non-negative integer)
+ */
+interface Number {
+    /**
+     * @return true is number represents 0 (zero)
+     */
+    boolean isZero();
+
+    /**
+     * @return a number that represents `this - 1`
+     * For example if called on a number that represents 2 - a number that represents 1 should be returned
+     */
+    Number previous();
+
+    /**
+     * @return a number that represents `this + 1`
+     * For example if called on a number that represents 2 - a number that represents 3 should be returned
+     */
+    Number next();
+}
+, finish the implementation:
+
+class Math {
+
+    private final Number zero;
+
+    public NumberMath(@Nonnull Number zero) {
+        this.zero = zero;
+    }
+
+    public boolean greaterOrEqualThan(@Nonnull Number n1, @Nonnull Number n2) {
+	...
+    }
+
+    public Number addition(@Nonnull Number n1, @Nonnull Number n2) {
+	...
+    }
+
+    public Number subtraction(@Nonnull Number n1, @Nonnull Number n2) {
+	...
+    }
+
+    public Number multiplication(@Nonnull Number n1, @Nonnull Number n2) {
+	...
+    }
+
+    public Number division(@Nonnull Number n1, @Nonnull Number n2) {
+	...
+    }
+}
+Restrictions
+
+Numbers are not singletons, i.e. operators == or .equals() do not compare the value of numbers.
+An implementation of Number is not available to the candidate, .previous() called on zero returns null.
+Solutions
+
+Implement interface
+
+    class Math {
+
+        private final Number zero;
+
+        public Math(Number zero) {
+            this.zero = zero;
+        }
+
+        public boolean greaterOrEqualThan(Number n1, Number n2) {
+            if (n1.isZero() && n2.isZero()) return true;
+            if (n1.isZero()) return false;
+            if (n2.isZero()) return true;
+            return greaterOrEqualThan(n1.previous(), n2.previous());
+        }
+
+        public Number addition(Number n1, Number n2) {
+            if (n1.isZero()) return n2;
+            return addition(n1.previous(), n2.next());
+        }
+
+        public Number subtraction(Number n1, Number n2) {
+            if (!greaterOrEqualThan(n1, n2))
+                throw new IllegalArgumentException("the first argument must be greater of equal than the second argument");
+            if (n2.isZero()) return n1;
+            return subtraction(n1.previous(), n2.previous());
+        }
+
+        public Number multiplication(Number n1, Number n2) {
+            return multiplication(n1, n2, zero);
+        }
+
+        private Number multiplication(Number n1, Number n2, Number accumulator) {
+            if (n1.isZero()) return accumulator;
+            return multiplication(n1.previous(), n2, addition(accumulator, n2));
+        }
+
+        public Number division(Number n1, Number n2) {
+            if (n2.isZero()) throw new IllegalArgumentException("division by zero is not allowed");
+            return division(n1, n2, zero);
+        }
+
+        private Number division(Number n1, Number n2, Number accumulator) {
+            if (!greaterOrEqualThan(n1, n2) || n2.isZero()) return accumulator;
+            return division(subtraction(n1, n2), n2, accumulator.next());
+        }
+    }
