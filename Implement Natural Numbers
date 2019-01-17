@@ -1,0 +1,149 @@
+The Problem
+
+In a nutshell the problem is to implement Natural (non-negative) numbers without using int or any other numbers in java.
+
+Basically a candidate is given a subset of Java language that has:
+
+OOP concepts:
+classes
+interfaces
+methods
+Basic language structures:
+local variables
+booleans
+flow control statements (if/elseif/else)
+while loops
+We ask a candidate to define non-negative numbers: [0, +infinity] using a given interface:
+
+/**
+ * An interface that represents non-negative integer number
+ */
+interface Number {
+    /**
+     * @return true is number represents 0 (zero)
+     */
+    boolean isZero();
+
+    /**
+     * @return a number that represents `this - 1`
+     * For example if called on a number that represents 2 - a number that represents 1 should be returned
+     */
+    Number previous();
+
+    /**
+     * @return a number that represents `this + 1`
+     * For example if called on a number that represents 2 - a number that represents 0 should be returned
+     */
+    Number next();
+}
+Questions to ask
+
+Ask candidate to implement this interface according to specification. Note that it is important to understand that there is no fields allowed
+Ask candidate to implement following methods, ask about time complexity:
+interface Operations {
+    /**
+     * @param n1
+     * @param n2
+     * @return a Number that represents a sum of n1 and n2
+     * O(n1) or O(n2) depending on which number is decremented
+     */
+    static Number sum(@Nonnull Number n1, @Nonnull Number n2) {
+        throw new UnsupportedOperationException();
+    }
+
+    /**
+     * @param n1
+     * @param n2
+     * @return a Number that represents a result of integer division of n1 by n2  (5/3=1 2/1=2 0/1=0 3/0=?)
+     * @throws IllegalArgumentException if n2 is zero
+     * O(n2)
+     */
+    static Number div(@Nonnull Number n1, @Nonnull Number n2) {
+        throw new UnsupportedOperationException();
+    }
+}
+Optional
+
+Talk about infinity, how can we implement a number that represents infinity, how can we add a method that detects infinity? How do we need to change operations to support that.
+
+Talk about rational numbers (or complex numbers)
+
+Solutions
+
+Implement interface
+
+abstract class NumberImpl implements Number {
+    @Override
+    public boolean isZero() {
+        return false;
+    }
+
+    @Override
+    public abstract Number previous();
+
+    @Override
+    public Number next() {
+        return new NumberImpl() {
+            @Override
+            public Number previous() {
+                return NumberImpl.this;
+            }
+        };
+    }
+
+    /**
+     * @return a number that represents zero
+     */
+    public static Number zero() {
+        return new NumberImpl() {
+            @Override
+            public boolean isZero() {
+                return true;
+            }
+
+            @Override
+            public Number previous() {
+                return null;
+            }
+        };
+    }
+}
+Implement functions
+
+interface Operations {
+    /**
+     * @param n1
+     * @param n2
+     * @return a Number that represents a sum of n1 and n2
+     */
+    static Number sum(@Nonnull Number n1, @Nonnull Number n2) {
+        if (n2.isZero())
+            return n1;
+        return sum(n1.next(), n2.previous());
+    }
+
+    /**
+     * @param n1
+     * @param n2
+     * @return a Number that represents a result of integer division of n1 by n2  (5/3=1 2/1=2 0/1=0 3/0=?)
+     * @throws IllegalArgumentException if n2 is zero
+     */
+    static Number div(@Nonnull Number n1, @Nonnull Number n2) {
+        if (n2.isZero())
+            throw new IllegalArgumentException("Division by Zero");
+
+        Number result = NumberImpl.zero();
+        while (!n1.isZero()) {
+            Number tmp = n2;
+            while (!tmp.isZero() && !n1.isZero()) {
+                n1 = n1.previous();
+                tmp = tmp.previous();
+            }
+
+            if (tmp.isZero()) {
+                result = result.next();
+            }
+        }
+        return result;
+    }
+}
