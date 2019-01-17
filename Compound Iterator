@@ -1,0 +1,138 @@
+The Problem
+
+Write a CompoundIterator. CompoundIterator takes an array of Iterators in its constructor; CompoundIterator itself should implement the java.util.Iterator interface, such that it iterates over the elements of the passed-in Iterators as if they were a single Iterator. If any of the Iterators in the passed-in array is null or empty, it should simply be skipped (note that this is not the same thing as saying that if the Iterators themselves return null elements from next(), those elements should be skipped — they should not be). It is expected that CompoundIterator will exhaust the passed-in Iterators. You do not need to provide a working implementation of the remove() method.
+
+Use the following stub to start:
+
+import java.util.Iterator;
+
+public class CompoundIterator
+implements Iterator {
+  public CompoundIterator(Iterator[] iterators) {
+    // TODO: Implement me
+  }
+
+  public boolean hasNext() {
+    // TODO: Implement me
+    return false;  // stub
+  }
+
+  public Object next() {
+    // TODO: Implement me
+    return null;  // stub
+  }
+
+  public void remove()
+  throws UnsupportedOperationException {
+    throw new UnsupportedOperationException(
+      getClass().getName() + " does not support the remove() operation.");
+  }
+}
+For the Interviewer
+
+For more experienced candidates, add this stipulation: Some of the passed-in Iterators may be iterating over data structures that, either individually or in aggregate, are too large to hold in memory at one time (e.g., large result sets from a database), and so it is not acceptable to collapse the elements of the Iterators into a single in-memory data structure.
+
+Encourage the candidate to think aloud about data structure and design choices.
+
+Hints
+
+How far do you have to look ahead to tell whether there is a next element?
+Followup Questions
+
+For less experienced candidates who choose to collapse the Iterators into a single data structure — which is arguably the simplest (and therefore best) solution in the absence of a requirement not to collapse them — you might ask, “Under what circumstances would it be inappropriate to collapse the Iterators into a single data structure?”
+
+Solution
+
+Solution #1
+
+Here is a solution that collapses the Iterators into a single data structure:
+
+import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.List;
+
+public class CompoundIterator
+implements Iterator
+{
+  private Iterator myIterator = null;
+
+  public CompoundIterator(Iterator[] iterators)
+  {
+    List myList = new ArrayList();
+
+    for (int i = 0; i < iterators.length; i++)
+    {
+      Iterator iterator = iterators[i];
+      if (iterator != null)
+      {
+        while (iterator.hasNext())
+        {
+          Object obj = iterator.next();
+          myList.add(obj);
+        }
+      }
+    }
+
+    myIterator = myList.iterator();
+  }
+
+  public boolean hasNext()
+  {
+    return myIterator.hasNext();
+  }
+
+  public Object next()
+  {
+    return myIterator.next();
+  }
+
+  public void remove()
+  throws UnsupportedOperationException
+  {
+    myIterator.remove();
+  }
+}
+Solution #2
+
+Here is one that does not collapse the Iterators into a single data structure:
+
+import java.util.Iterator;
+import java.util.NoSuchElementException;
+
+public class CompoundIterator
+implements Iterator {
+
+  private Iterator[] iterators = null;
+  private int index = 0;
+
+  public CompoundIterator(Iterator[] iterators) {
+    this.iterators = iterators;
+  }
+
+  public boolean hasNext() {
+    if (iterators == null) {
+      return false;
+    }
+    for (; index < iterators.length; index++) {
+      Iterator oneIterator = iterators[index];
+      if (oneIterator != null && oneIterator.hasNext()) {
+        return true;
+      }
+    }
+    // Fell out of the loop; must not have any more Iterators
+    return false;
+  }
+
+  public Object next() {
+    if (!hasNext()) {
+      throw new NoSuchElementException();
+    }
+    return iterators[index].next();
+  }
+
+  public void remove()
+  throws UnsupportedOperationException {
+    throw new UnsupportedOperationException(
+    getClass().getName() + " does not support the remove() operation.");
+  }
+}
