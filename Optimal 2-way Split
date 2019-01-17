@@ -1,0 +1,85 @@
+The Problem
+
+Divide an input array of numbers into 2 groups such that the absolute difference between an arithmetic mean in each group is maximized. Every element from the input array must belong to either one of the two groups. Discuss time and memory complexity of your solution.
+
+For the Interviewer
+
+Candidate may ask clarifying questions.
+
+Q: "What are the numbers in the input array?" A: "Positive and negative doubles."
+Q: "Should I assume any particular order or distribution of the data in the input array?" A: "No."
+Q: "Is approximate solution acceptable?" A: "No, only exact solution."
+Q: "Should I consider illegal input?" A: "Yes, you should signal an error if illegal arguments are provided to the algorithm." (Illegal argument is any array that does not have 2 or more elements.
+Q: "Should I return 2 arrays?" A: "You should use as little memory as you can." (A candidate might not know at this point that an answer may be represented as a single scalar, i.e. a split point that discriminates inputs: all inputs less or equal than the split point belong to one group. All the other elements belong to the other group).
+Q: "What if there's more then one valid output?" A: "Return the first solution."
+Candidate may propose a couple of clarifying examples.
+
+e.g. [2, 3, 1] -> {1},{2,3} or {1,2},{3} are both valid splits, in both cases the difference is maximized and equal to 1.5
+Candidate should be able to propose a brute-force solution to find every possible split of data and choose the one that maximizes an objective function.
+
+Hints
+
+Candidate should figure out that all elements in one group will be <= all the elements in the other group. Ask them to verbally prove this.
+
+Once the candidate has explored the problem, ask them if they can create a solution with O(n) time and O(1) additional memory complexity.
+
+Followup Questions
+
+Candidate must be able to calculate time and space complexity of solution. Brute force time complexity is O(2^N-2) and memory complexity O(1). A candidate must be able to prove what is the time complexity verbally, something like:
+"Each element might either be in one or the other group, so I have 2^N possible
+combinations, where N is a number of elements in input array, but I don't allow
+all elements in the same group, because then I can't calculate the arithmetic
+mean in one of them, so that's where -2 comes from. O(1) memory complexity comes
+from the fact that the brute-force solution only requires nesting loops and no
+memoization."
+Solution
+
+A sample solution for this problem follows:
+
+double findOptimalGroupingInSortedArray(double[] input) {
+  if (input == null || input.length < 2)
+    throw new IllegalArgumentException("Input must have 2 or more elements.");
+  double leftSum = input[0];
+  double rightSum = 0.0;
+  for (int i = 1; i < input.length; i++) {
+    rightSum += input[i];
+  }
+  int splitIndex = 0;
+  double maxDifference = rightSum / (input.length - 1) - leftSum;
+  for (int i = 1; i < input.length - 1; i++) {
+    leftSum += input[i];
+    rightSum -= input[i];
+    double currentDifference =
+      (rightSum / (input.length - 1 - i)) - (leftSum / (i + 1));
+    if (currentDifference > maxDifference) {
+      maxDifference = currentDifference;
+      splitIndex = i;
+    }
+  }
+  return input[splitIndex];
+}
+Evaluation
+
+Rate the candidate based on the following scale (from 1-4):
+
+4.0
+
+Candidate proposes O(N) time, O(1) space complexity solution
+Able to explain the complexity of his/her solution.
+Correct code (passes all tests).
+Candidate has a clear understanding of "impractical" solutions (brute-force solution). Was able to prove this mathematically.
+3.0
+
+Candidate proposes O(N) time solution but used more memory than needed.
+Able to explain the complexity of his/her solution?
+Correct code (passes all tests).
+Candidate has a clear understanding of "impractical" solutions (brute-force solution) but could not rigorously prove the complexity.
+2.0
+
+Candidate proposes worse than O(N) time complexity solution. Usually this happens when a candidate re-calculates the average over and over.
+Candidate is able to explain the complexity of his/her solution?
+Correct code (passes all tests).
+Candidate has a clear understanding of "impractical" solutions (brute-force solution) but could not rigorously prove the complexity.
+1.0
+
+None of the above.
