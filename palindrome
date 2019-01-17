@@ -1,0 +1,114 @@
+
+Palindrome
+
+Suitable for: Mid-Senior Level.
+Time: 15-45 minutes
+Format: Phone-Screen or In-Person
+Skills: Knowledge of algorithms, asking clarifying questions and coding to spec.
+The coderpad.io Questions for this problem are in two parts. Start at https://coderpad.io/questions and look for the two questions called iTunes: Palindrome Function and iTunes: Palindrome Substrings. Select the Palindrome Function question and press the Create Pad With Question button, then once the candidate has finished with that question, continue with Palindrome Substrings.
+
+The Problem
+
+A palindrome is a string that is the same when read from left to right and right to left. This task is to write a function that counts how many palindromes are in a given input string.
+
+For the Interviewer
+
+Encourage the candidate to think aloud about data structure and design choices. Tell the candidate:
+
+Implement a function that takes a string and answers if it is a palindrome or not. There are two caveats:
+String has special characters, that are ALL non-alphabetic characters. These characters we should simply ignore. For example a?a?12312?a--a== is a palindrome, since if you strip off non-alpha chars it is aaaa
+Lowercase letters are equal to uppercase. e.g. aBbA is a palindrome.
+Second question is to implement a function that counts how many palindromes a given input string contains.
+To simplify, we assume that string has NO special characters and all the chars are lowercased.
+
+For example, elephant = 8 + 1 = 9, aaa = 3 + 2 + 1 = 6.
+
+Hints
+
+If the candidate starts down a path that requires an algorithm with some additional memory or scratch space, let them know that they can create a more efficient function that does not need additional memory.
+If they can't come up with an algorithm - give a hint, that every palindrome has a center.
+If that doesn't help - tell that if x|word|x is a palindrome, then word is a palindrome as well.
+Followup Questions
+
+For Part 1 (Palindrome Function)
+
+Ask the candidate to work out the complexity of their algorithm.
+For Part 2 (Palindrome Substrings)
+
+Ask for a naive solution (generate all the substrings and run through isPalindrome function)
+Ask for complexity (expected answer is O(N^3)).
+Ask to find a O(N^2) solution.
+Solution
+
+Sample solutions for the Palindrome problems follow.
+
+isPalindrome Function
+
+private boolean isAlphabetic(char c) {
+  // we allow candidates to assume this method exists
+  return ('a' <= c && c <= 'z') || ('A' <= c && c <= 'Z');
+}
+
+private boolean equalsIgnoreCase(char c1, char c2) {
+  // some candidates do conversion to upper case - which is also ok.
+  // implementing something like this is optional, provides additional credit
+  return c1 - c2 == 0 || Math.abs(c1 - c2) == 'a' - 'A';
+}
+
+private boolean isPalindrome(final String input) {
+  if (input == null)
+      throw new IllegalArgumentException("input mustn't be null");
+  int start = 0;
+  int end = input.length() - 1;
+  while (start < end) {
+    if (!isAlphabetic(input.charAt(start))) {
+      start++;
+      continue; }
+    if (!isAlphabetic(input.charAt(end))) {
+      end--;
+      continue; }
+    if (!equalsIgnoreCase(input.charAt(start), input.charAt(end)))
+      return false;
+    start++;
+    end--; }
+  return true;
+}
+Count Palindromes
+
+private int countToSides(String s, int leftIndex, int rightIndex) {
+  int count = 0;
+  while (leftIndex >= 0 && rightIndex < s.length() && s.charAt(leftIndex) ==
+         s.charAt(rightIndex)) {
+    count++;
+    leftIndex--;
+    rightIndex++;
+  }
+  return count;
+}
+
+private int countPalindromes(final String input) {
+  if(input == null) throw new IllegalArgumentException("input mustn't be null");
+  int total = 0;
+  for (int i = 0; i < input.length(); i++) {
+    total += countToSides(input, i, i);
+    total += countToSides(input, i, i + 1);
+  }
+  return total;
+}
+Evaluation
+
+The minimum for a candidate is to at least come up with an iterative solution that doesn't require additional memory.
+Can estimate the complexity of their isPalindrome function.
+Can estimate the complexity of the naive approach for the Palindrome Substrings problem (Part 2).
+Candidate comes up with a good, clean, well structured solution to both parts of the problem.
+Candidate spent time clarifying and asking questions and discussing their approach before jumping into the implementation.
+© 2019 GitHub, Inc.
+Help
+Support
+API
+Training
+Shop
+Blog
+About
+GitHub Enterprise 2.14.10
+Press h to open a hovercard with more details.
