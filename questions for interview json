@@ -1,0 +1,9 @@
+The intent is to take a real json object, pull it into whichever programming language the candidate wants. Parse it into a native structure and then be able to print out specific keys and values at will.
+
+For example:
+
+Find the average collection_time_in_millis across both nodes for both OLD and YOUNG gcs
+or
+
+Find the maximum peak_max_in_bytes used by both nodes in the old pools
+Have fun with it.. :)
